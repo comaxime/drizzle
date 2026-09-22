@@ -1,0 +1,52 @@
+version: 2
+
+jobs:
+  build:
+    working_directory: ~/nest
+    docker:
+      - image: cimg/node:24.19.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+      - run:
+          name: Install dependencies
+          command: npm install --ignore-scripts
+      - save_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - ./node_modules
+      - run:
+          name: Build
+          command: npm run build
+
+  integration_tests:
+    working_directory: ~/nest
+    docker:
+      - image: cimg/node:24.19.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+      - run:
+          name: Install dependencies
+          command: npm install --ignore-scripts
+      # The e2e suite runs against PGlite (in-process Postgres), so no database container is needed
+      - run:
+          name: e2e tests
+          command: npm run test:e2e
+      - run:
+          name: e2e tests (drizzle-orm v1)
+          command: |
+            npm install --no-save drizzle-orm@rc
+            npx tsc -p tsconfig.json --noEmit
+            npm run test:e2e
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build
+      - integration_tests:
+          requires:
+            - build
