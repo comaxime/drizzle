@@ -16,7 +16,11 @@ export function getDrizzleToken(
     : `${name}DrizzleDatabase`;
 }
 
-type DrizzleClient = { end?: () => unknown; close?: () => unknown };
+type DrizzleClient = {
+  end?: () => unknown;
+  close?: () => unknown;
+  promise?: () => DrizzleClient;
+};
 type DrizzleDatabaseLike = {
   $client?: unknown;
   $primary?: DrizzleDatabaseLike;
@@ -62,9 +66,13 @@ export async function closeDrizzleClient(client: DrizzleClient): Promise<void> {
     return;
   }
   closedClients.add(client);
-  if (typeof client.end === 'function') {
-    await client.end();
-  } else if (typeof client.close === 'function') {
-    await client.close();
+  // mysql2 callback clients (detected the way Drizzle detects them) end in the
+  // background. Their promise wrapper resolves once they're closed.
+  const target =
+    typeof client.promise === 'function' ? client.promise() : client;
+  if (typeof target.end === 'function') {
+    await target.end();
+  } else if (typeof target.close === 'function') {
+    await target.close();
   }
 }

@@ -59,6 +59,23 @@ describe('Drizzle - shutdown', () => {
     expect(end).toHaveBeenCalledTimes(1);
   });
 
+  it('should await "end()" of mysql2 callback clients through their promise wrapper', async () => {
+    let closed = false;
+    const promiseEnd = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      closed = true;
+    });
+    const callbackEnd = vi.fn();
+    await bootAndClose({
+      db: {
+        $client: { end: callbackEnd, promise: () => ({ end: promiseEnd }) },
+      },
+    });
+    expect(promiseEnd).toHaveBeenCalledTimes(1);
+    expect(callbackEnd).not.toHaveBeenCalled();
+    expect(closed).toBe(true);
+  });
+
   it('should skip clients that hold nothing open', async () => {
     await expect(
       bootAndClose({ db: { $client: () => undefined } }),
