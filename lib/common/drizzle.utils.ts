@@ -32,7 +32,7 @@ const closedClients = new WeakSet<object>();
 /**
  * Returns the driver clients a Drizzle database holds: `db.$client` and, for a
  * database created with `withReplicas()`, the clients of its primary and
- * replica databases.
+ * replica databases (`$primary` and `$replicas`, since Drizzle 0.44.6).
  */
 export function getDrizzleClients(db: unknown): DrizzleClient[] {
   const database = db as DrizzleDatabaseLike | null | undefined;

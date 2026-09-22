@@ -107,17 +107,21 @@ describe('Drizzle - shutdown', () => {
     );
   });
 
-  it('should close the clients of the primary and replica databases', async () => {
-    const primary = createDatabase();
-    const firstReplica = createDatabase();
-    const secondReplica = createDatabase();
-    await bootAndClose({
-      db: withReplicas(primary, [firstReplica, secondReplica]),
-    });
-    expect(primary.$client.closed).toBe(true);
-    expect(firstReplica.$client.closed).toBe(true);
-    expect(secondReplica.$client.closed).toBe(true);
-  });
+  // `withReplicas()` exposes `$primary` and `$replicas` since Drizzle 0.44.6.
+  it.skipIf(!('$replicas' in withReplicas({} as any, [{} as any])))(
+    'should close the clients of the primary and replica databases',
+    async () => {
+      const primary = createDatabase();
+      const firstReplica = createDatabase();
+      const secondReplica = createDatabase();
+      await bootAndClose({
+        db: withReplicas(primary, [firstReplica, secondReplica]),
+      });
+      expect(primary.$client.closed).toBe(true);
+      expect(firstReplica.$client.closed).toBe(true);
+      expect(secondReplica.$client.closed).toBe(true);
+    },
+  );
 
   it('should close a client shared by several registrations once', async () => {
     const error = vi

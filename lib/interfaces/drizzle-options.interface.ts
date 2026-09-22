@@ -48,7 +48,8 @@ export interface DrizzleModuleSharedOptions {
   /**
    * If `true`, the database's client (`db.$client`) is closed on application
    * shutdown, with its `end()` or `close()` method. For a database created
-   * with `withReplicas()`, the replicas' clients are closed as well.
+   * with `withReplicas()`, the replicas' clients are closed as well (with
+   * Drizzle 0.44.6 and later, which exposes them as `$replicas`).
    * Default: true
    */
   autoCloseConnection?: boolean;

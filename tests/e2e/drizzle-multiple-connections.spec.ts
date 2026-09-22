@@ -43,11 +43,10 @@ describe('Drizzle - multiple connections', () => {
     await db.execute(sql`CREATE TABLE only_in_default (id int)`);
     await expect(
       analyticsDb.execute(sql`SELECT * FROM only_in_default`),
-    ).rejects.toMatchObject({
-      cause: expect.objectContaining({
-        message: expect.stringMatching(/does not exist/),
-      }),
-    });
+    ).rejects.toSatisfy((error: Error & { cause?: { message?: string } }) =>
+      // Newer Drizzle versions wrap the driver error in `cause`.
+      /does not exist/.test(error.cause?.message ?? error.message),
+    );
 
     await app.close();
   });
