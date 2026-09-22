@@ -39,13 +39,12 @@ Install the client for your database instead of `pg` if you use another driver (
 import { Module } from '@nestjs/common';
 import { DrizzleModule } from '@nestjs/drizzle';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import * as schema from './db/schema.js';
 
 @Module({
   imports: [
     DrizzleModule.forRootAsync({
       useFactory: () => ({
-        db: drizzle(process.env.DATABASE_URL!, { schema }),
+        db: drizzle(process.env.DATABASE_URL!),
       }),
     }),
   ],
@@ -57,13 +56,19 @@ export class AppModule {}
 import { Injectable } from '@nestjs/common';
 import { InjectDrizzle } from '@nestjs/drizzle';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from './db/schema.js';
+import { users } from './db/schema.js';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectDrizzle() private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(@InjectDrizzle() private readonly db: NodePgDatabase) {}
+
+  findAll() {
+    return this.db.select().from(users);
+  }
 }
 ```
+
+The database's client is closed when the application shuts down. `@nestjs/drizzle` supports Drizzle ORM v0.34 and later, including v1.
 
 [Overview & Tutorial](https://docs.nestjs.com/techniques/database#drizzle-integration)
 

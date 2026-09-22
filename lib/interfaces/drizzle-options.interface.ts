@@ -16,12 +16,13 @@ export interface DrizzleModuleOptions<TDatabase = any> {
   name?: string;
   /**
    * The database instance returned by Drizzle's `drizzle()` function
-   * (from any driver entry point, e.g. `drizzle-orm/node-postgres`).
+   * (from any driver entry point, e.g., `drizzle-orm/node-postgres`).
    */
   db: TDatabase;
   /**
-   * If `true`, the database's underlying client (`db.$client`) is closed by the
-   * `onApplicationShutdown` hook handler, using its `end()` or `close()` method.
+   * If `true`, the database's client (`db.$client`) is closed on application
+   * shutdown, with its `end()` or `close()` method. For a database created
+   * with `withReplicas()`, the replicas' clients are closed as well.
    * Default: true
    */
   autoCloseConnection?: boolean;
@@ -61,12 +62,27 @@ export interface DrizzleModuleAsyncOptions<TDatabase = any> extends Pick<
    * Default: "default"
    */
   name?: string;
+  /**
+   * An existing provider, exported by one of the modules in `imports`, whose
+   * `createDrizzleOptions()` method returns the options.
+   */
   useExisting?: Type<DrizzleOptionsFactory<TDatabase>>;
+  /**
+   * A class that the module instantiates and whose `createDrizzleOptions()`
+   * method returns the options.
+   */
   useClass?: Type<DrizzleOptionsFactory<TDatabase>>;
+  /**
+   * A factory that returns the options. It runs once for each application, so
+   * every application gets its own database client.
+   */
   useFactory?: (
     ...args: any[]
   ) =>
     | Promise<DrizzleModuleFactoryOptions<TDatabase>>
     | DrizzleModuleFactoryOptions<TDatabase>;
+  /**
+   * The providers to inject into `useFactory`.
+   */
   inject?: Array<InjectionToken | OptionalFactoryDependency>;
 }
