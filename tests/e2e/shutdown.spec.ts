@@ -1,5 +1,6 @@
 import { Logger, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { withReplicas } from 'drizzle-orm/pg-core';
 import {
   DrizzleModule,
   DrizzleModuleOptions,
@@ -7,8 +8,10 @@ import {
 } from '../../lib/index.js';
 import { createDatabase } from '../src/db/database.js';
 
-async function bootAndClose(options: DrizzleModuleOptions) {
-  @Module({ imports: [DrizzleModule.forRoot(options)] })
+async function bootAndClose(...registrations: DrizzleModuleOptions[]) {
+  @Module({
+    imports: registrations.map((options) => DrizzleModule.forRoot(options)),
+  })
   class AppModule {}
 
   const moduleRef = await Test.createTestingModule({
@@ -85,6 +88,49 @@ describe('Drizzle - shutdown', () => {
       'Unable to close the database connection',
       expect.stringContaining('already ended'),
     );
+  });
+
+  it('should close the clients of the primary and replica databases', async () => {
+    const primary = createDatabase();
+    const firstReplica = createDatabase();
+    const secondReplica = createDatabase();
+    await bootAndClose({
+      db: withReplicas(primary, [firstReplica, secondReplica]),
+    });
+    expect(primary.$client.closed).toBe(true);
+    expect(firstReplica.$client.closed).toBe(true);
+    expect(secondReplica.$client.closed).toBe(true);
+  });
+
+  it('should close a client shared by several registrations once', async () => {
+    const error = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const db = createDatabase();
+
+    await bootAndClose({ db }, { name: 'analytics', db });
+    expect(db.$client.closed).toBe(true);
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it('should close the remaining clients when one of them fails', async () => {
+    const error = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const end = vi.fn().mockRejectedValue(new Error('already ended'));
+    const close = vi.fn();
+    const primary = { $client: { end } };
+
+    await bootAndClose({
+      db: {
+        ...primary,
+        $primary: primary,
+        $replicas: [{ $client: { close } }],
+      },
+    });
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledTimes(1);
   });
 });
 

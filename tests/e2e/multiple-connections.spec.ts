@@ -69,5 +69,7 @@ describe('Drizzle - multiple connections', () => {
 
     expect(moduleRef.get(getDrizzleToken())).toBe(shared);
     expect(moduleRef.get(getDrizzleToken('analytics'))).toBe(shared);
+
+    await moduleRef.close();
   });
 });

@@ -9,7 +9,11 @@ import {
   Type,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { closeDrizzleClient, getDrizzleToken } from './common/drizzle.utils.js';
+import {
+  closeDrizzleClient,
+  getDrizzleClients,
+  getDrizzleToken,
+} from './common/drizzle.utils.js';
 import {
   DEFAULT_CONNECTION_NAME,
   DRIZZLE_MODULE_ID,
@@ -52,17 +56,20 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
 
   async onApplicationShutdown() {
     if (this.options.autoCloseConnection === false) {
-      /* Skip closing the client automatically by shutdown hook */
       return;
     }
-    try {
-      await closeDrizzleClient(this.options.db);
-    } catch (err) {
-      this.logger.error(
-        'Unable to close the database connection',
-        (err as Error)?.stack,
-      );
-    }
+    await Promise.all(
+      getDrizzleClients(this.options.db).map(async (client) => {
+        try {
+          await closeDrizzleClient(client);
+        } catch (err) {
+          this.logger.error(
+            'Unable to close the database connection',
+            err instanceof Error ? err.stack : String(err),
+          );
+        }
+      }),
+    );
   }
 
   private static createDynamicModule(
