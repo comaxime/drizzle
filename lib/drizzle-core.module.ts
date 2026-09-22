@@ -16,10 +16,12 @@ import {
 } from './common/drizzle.utils.js';
 import {
   DEFAULT_CONNECTION_NAME,
+  DRIZZLE_MODULE_DATABASE,
   DRIZZLE_MODULE_ID,
   DRIZZLE_MODULE_OPTIONS,
 } from './drizzle.constants.js';
 import type {
+  DrizzleFunction,
   DrizzleModuleAsyncOptions,
   DrizzleModuleOptions,
   DrizzleOptionsFactory,
@@ -33,14 +35,16 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
   constructor(
     @Inject(DRIZZLE_MODULE_OPTIONS)
     private readonly options: DrizzleModuleOptions,
+    @Inject(DRIZZLE_MODULE_DATABASE)
+    private readonly db: unknown,
   ) {}
 
   static forRoot(options: DrizzleModuleOptions): DynamicModule {
     // Nest serializes dynamic module metadata to compute module keys when
     // `moduleIdGeneratorAlgorithm` is set to "deep-hash" or `snapshot` is
-    // enabled (e.g., for Devtools). The database (and its connection pool)
-    // must stay out of that metadata, so it's only reachable through a
-    // closure, never through a `useValue` provider.
+    // enabled (e.g., for Devtools). A database (and its connection pool)
+    // must stay out of that metadata, so the options are only reachable
+    // through a closure, never through a `useValue` provider.
     const optionsProvider: Provider = {
       provide: DRIZZLE_MODULE_OPTIONS,
       useFactory: () => options,
@@ -61,7 +65,7 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
       return;
     }
     await Promise.all(
-      getDrizzleClients(this.options.db).map(async (client) => {
+      getDrizzleClients(this.db).map(async (client) => {
         try {
           await closeDrizzleClient(client);
         } catch (err) {
@@ -80,24 +84,15 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
     imports: DynamicModule['imports'] = [],
   ): DynamicModule {
     const databaseProvider: Provider = {
-      provide: getDrizzleToken(name),
-      useFactory: (options: DrizzleModuleOptions) => {
-        if (options?.db === undefined || options?.db === null) {
-          const connection =
-            name && name !== DEFAULT_CONNECTION_NAME ? ` ("${name}")` : '';
-          const receivedDatabase =
-            typeof options === 'object' &&
-            options !== null &&
-            '$client' in options;
-          throw new Error(
-            receivedDatabase
-              ? `DrizzleModule${connection} received a database instance instead of the module options. Pass it as the "db" option: { db }.`
-              : `DrizzleModule${connection} was registered without a "db" option. Pass the database instance returned by Drizzle's drizzle() function.`,
-          );
-        }
-        return options.db;
-      },
+      provide: DRIZZLE_MODULE_DATABASE,
+      useFactory: (options: DrizzleModuleOptions) =>
+        this.createDatabase(options, name),
       inject: [DRIZZLE_MODULE_OPTIONS],
+    };
+    const exportedDatabaseProvider: Provider = {
+      provide: getDrizzleToken(name),
+      useFactory: (db: unknown) => db,
+      inject: [DRIZZLE_MODULE_DATABASE],
     };
 
     return {
@@ -106,6 +101,7 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
       providers: [
         ...optionsProviders,
         databaseProvider,
+        exportedDatabaseProvider,
         // Keeps the keys of separate registrations apart when Nest derives
         // module keys from their metadata ("deep-hash").
         {
@@ -113,8 +109,48 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
           useValue: randomUUID(),
         },
       ],
-      exports: [databaseProvider],
+      exports: [exportedDatabaseProvider],
     };
+  }
+
+  private static createDatabase(
+    options: DrizzleModuleOptions | undefined,
+    name: string | undefined,
+  ): unknown {
+    const connection =
+      name && name !== DEFAULT_CONNECTION_NAME ? ` ("${name}")` : '';
+    const hasDatabase = options?.db !== undefined && options?.db !== null;
+    const hasDrizzle = options?.drizzle !== undefined;
+    if (hasDatabase && hasDrizzle) {
+      throw new Error(
+        `DrizzleModule${connection} received both a "db" and a "drizzle" option. Pass either a database instance ("db") or a drizzle() function with its "connection" ("drizzle").`,
+      );
+    }
+    if (hasDatabase) {
+      return options!.db;
+    }
+    if (typeof options?.drizzle === 'function') {
+      const {
+        name: _name,
+        autoCloseConnection: _autoCloseConnection,
+        db: _db,
+        drizzle,
+        ...config
+      } = options as DrizzleModuleOptions & { drizzle: DrizzleFunction };
+      return drizzle(config);
+    }
+    if (hasDrizzle) {
+      throw new Error(
+        `DrizzleModule${connection} received a "drizzle" option that isn't a function. Pass the drizzle() function exported by your driver's entry point (e.g., drizzle-orm/node-postgres).`,
+      );
+    }
+    const receivedDatabase =
+      typeof options === 'object' && options !== null && '$client' in options;
+    throw new Error(
+      receivedDatabase
+        ? `DrizzleModule${connection} received a database instance instead of the module options. Pass it as the "db" option: { db }.`
+        : `DrizzleModule${connection} was registered without a "db" or "drizzle" option. Pass the database instance returned by Drizzle's drizzle() function ("db"), or the drizzle() function and a "connection" ("drizzle").`,
+    );
   }
 
   private static createAsyncProviders(

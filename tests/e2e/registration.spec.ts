@@ -54,11 +54,21 @@ describe('Drizzle - registration', () => {
         },
       };
 
-      @Module({ imports: [DrizzleModule.forRoot({ db })] })
+      @Module({
+        imports: [
+          DrizzleModule.forRoot({ db }),
+          DrizzleModule.forRoot({
+            name: 'created',
+            drizzle: (_config: { connection: string }) => db,
+            connection: 'postgres://localhost/db',
+          }),
+        ],
+      })
       class AppModule {}
 
       const context = await createContext(AppModule);
       expect(context.get(getDrizzleToken())).toBe(db);
+      expect(context.get(getDrizzleToken('created'))).toBe(db);
     },
   );
 
@@ -103,7 +113,7 @@ describe('Drizzle - registration', () => {
     await expect(
       Test.createTestingModule({ imports: [AppModule] }).compile(),
     ).rejects.toThrow(
-      'DrizzleModule ("analytics") was registered without a "db" option',
+      'DrizzleModule ("analytics") was registered without a "db" or "drizzle" option',
     );
   });
 

@@ -1,6 +1,7 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { DrizzleCoreModule } from './drizzle-core.module.js';
 import type {
+  DrizzleFunction,
   DrizzleModuleAsyncOptions,
   DrizzleModuleOptions,
 } from './interfaces/drizzle-options.interface.js';
@@ -14,12 +15,19 @@ import type {
 @Module({})
 export class DrizzleModule {
   /**
-   * Registers an existing database instance. Every application created from
-   * the importing module shares that instance, and the first one to shut down
-   * closes its client. If each application (e.g., in an e2e test suite) needs
-   * a client of its own, use `forRootAsync()` instead.
+   * Registers a database from static options.
+   *
+   * With `drizzle` and `connection`, the module creates the database by
+   * calling the given `drizzle()` function once for each application, so
+   * every application gets its own client.
+   *
+   * With `db`, it registers an instance that you created. Every application
+   * created from the importing module shares that instance, and the first one
+   * to shut down closes its client.
    */
-  static forRoot(options: DrizzleModuleOptions): DynamicModule {
+  static forRoot<TDrizzle = DrizzleFunction>(
+    options: DrizzleModuleOptions<any, TDrizzle>,
+  ): DynamicModule {
     return {
       module: DrizzleModule,
       imports: [DrizzleCoreModule.forRoot(options)],
@@ -27,11 +35,13 @@ export class DrizzleModule {
   }
 
   /**
-   * Registers a database created by a factory (`useFactory`) or by an options
-   * factory class (`useClass`, `useExisting`). The factory runs once for each
-   * application, so every application gets its own database client.
+   * Registers a database whose options are created by a factory
+   * (`useFactory`) or by an options factory class (`useClass`,
+   * `useExisting`). The factory runs once for each application.
    */
-  static forRootAsync(options: DrizzleModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TDrizzle = DrizzleFunction>(
+    options: DrizzleModuleAsyncOptions<any, TDrizzle>,
+  ): DynamicModule {
     return {
       module: DrizzleModule,
       imports: [DrizzleCoreModule.forRootAsync(options)],

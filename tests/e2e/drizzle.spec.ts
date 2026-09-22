@@ -4,11 +4,15 @@ import { Server } from 'http';
 import request from 'supertest';
 import { createApplicationModule } from '../src/app.module.js';
 import { AsyncOptionsClassModule } from '../src/async-class-options.module.js';
+import { AsyncConnectionOptionsModule } from '../src/async-connection-options.module.js';
 import { AsyncOptionsExistingModule } from '../src/async-existing-options.module.js';
 import { AsyncOptionsFactoryModule } from '../src/async-options.module.js';
+import { ConnectionOptionsModule } from '../src/connection-options.module.js';
 
 describe.each<[string, () => Type]>([
-  ['forRoot', createApplicationModule],
+  ['forRoot (drizzle)', () => ConnectionOptionsModule],
+  ['forRoot (db)', createApplicationModule],
+  ['forRootAsync (useFactory, drizzle)', () => AsyncConnectionOptionsModule],
   ['forRootAsync (useFactory)', () => AsyncOptionsFactoryModule],
   ['forRootAsync (useClass)', () => AsyncOptionsClassModule],
   ['forRootAsync (useExisting)', () => AsyncOptionsExistingModule],
