@@ -28,48 +28,10 @@
 ## Installation
 
 ```bash
-$ npm i --save @nestjs/drizzle drizzle-orm pg
+$ npm i --save @nestjs/drizzle drizzle-orm
 ```
-
-Install the client for your database instead of `pg` if you use another driver (`postgres`, `mysql2`, `better-sqlite3`, `@libsql/client`, ...).
 
 ## Quick Start
-
-```typescript
-import { Module } from '@nestjs/common';
-import { DrizzleModule } from '@nestjs/drizzle';
-import { drizzle } from 'drizzle-orm/node-postgres';
-
-@Module({
-  imports: [
-    DrizzleModule.forRoot({
-      drizzle,
-      connection: process.env.DATABASE_URL!,
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-The module calls the `drizzle()` function you pass with `connection` and any other Drizzle options (e.g., `relations`, `logger`), once for each application. To register a database you create yourself, pass it as `db` instead.
-
-```typescript
-import { Injectable } from '@nestjs/common';
-import { InjectDrizzle } from '@nestjs/drizzle';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { users } from './db/schema.js';
-
-@Injectable()
-export class UsersService {
-  constructor(@InjectDrizzle() private readonly db: NodePgDatabase) {}
-
-  findAll() {
-    return this.db.select().from(users);
-  }
-}
-```
-
-The database's client is closed when the application shuts down. `@nestjs/drizzle` supports Drizzle ORM v0.35 and later, including v1.
 
 [Overview & Tutorial](https://docs.nestjs.com/techniques/database#drizzle-integration)
 
