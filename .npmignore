@@ -10,7 +10,6 @@ tsconfig.json
 CONTRIBUTING.md
 renovate.json
 # tooling
-.circleci
 .husky
 .commitlintrc.json
 .release-it.json

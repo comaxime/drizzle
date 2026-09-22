@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm install
+      - run: npm run build
+      - run: npm run lint
+
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Verify the suite passes against the oldest supported Drizzle ORM
+        # version, the latest v0.x release, and v1 (published under `rc`).
+        drizzle-orm-version: ['0.35.x', '0.45.x', 'rc']
+    # The suite runs against PGlite (in-process Postgres), so no database
+    # service is needed.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm install
+      - name: Install Drizzle ORM ${{ matrix.drizzle-orm-version }}
+        # Unlike `npm pkg set`, which leaves the locked version in place for a
+        # dist-tag such as `rc`, this resolves both tags and ranges.
+        run: npm install --no-save drizzle-orm@${{ matrix.drizzle-orm-version }}
+      - name: Report installed Drizzle ORM version
+        # `require('drizzle-orm/package.json')` is blocked by v1's exports map,
+        # so read the manifest from disk directly.
+        run: node -e "console.log('drizzle-orm', JSON.parse(require('fs').readFileSync('./node_modules/drizzle-orm/package.json','utf8')).version)"
+      - name: Typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+      - name: e2e tests
+        run: npm run test:e2e
