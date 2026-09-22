@@ -2,16 +2,16 @@ import { INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Server } from 'http';
 import request from 'supertest';
-import { createApplicationModule } from '../src/app.module.js';
+import { ApplicationModule } from '../src/app.module.js';
 import { AsyncOptionsClassModule } from '../src/async-class-options.module.js';
 import { AsyncConnectionOptionsModule } from '../src/async-connection-options.module.js';
 import { AsyncOptionsExistingModule } from '../src/async-existing-options.module.js';
 import { AsyncOptionsFactoryModule } from '../src/async-options.module.js';
-import { ConnectionOptionsModule } from '../src/connection-options.module.js';
+import { createDatabaseInstanceModule } from '../src/database-instance.module.js';
 
 describe.each<[string, () => Type]>([
-  ['forRoot (drizzle)', () => ConnectionOptionsModule],
-  ['forRoot (db)', createApplicationModule],
+  ['forRoot (drizzle)', () => ApplicationModule],
+  ['forRoot (db)', createDatabaseInstanceModule],
   ['forRootAsync (useFactory, drizzle)', () => AsyncConnectionOptionsModule],
   ['forRootAsync (useFactory)', () => AsyncOptionsFactoryModule],
   ['forRootAsync (useClass)', () => AsyncOptionsClassModule],
