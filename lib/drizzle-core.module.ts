@@ -36,9 +36,11 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
   ) {}
 
   static forRoot(options: DrizzleModuleOptions): DynamicModule {
-    // Nest serializes a dynamic module's metadata to compute its key, so the
-    // database instance (and its connection pool) must only be reachable
-    // through a closure, never through a `useValue` provider.
+    // Nest serializes dynamic module metadata to compute module keys when
+    // `moduleIdGeneratorAlgorithm` is set to "deep-hash" or `snapshot` is
+    // enabled (e.g., for Devtools). The database (and its connection pool)
+    // must stay out of that metadata, so it's only reachable through a
+    // closure, never through a `useValue` provider.
     const optionsProvider: Provider = {
       provide: DRIZZLE_MODULE_OPTIONS,
       useFactory: () => options,
@@ -83,8 +85,14 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
         if (options?.db === undefined || options?.db === null) {
           const connection =
             name && name !== DEFAULT_CONNECTION_NAME ? ` ("${name}")` : '';
+          const receivedDatabase =
+            typeof options === 'object' &&
+            options !== null &&
+            '$client' in options;
           throw new Error(
-            `DrizzleModule${connection} was registered without a "db" option. Pass the database instance returned by Drizzle's drizzle() function.`,
+            receivedDatabase
+              ? `DrizzleModule${connection} received a database instance instead of the module options. Pass it as the "db" option: { db }.`
+              : `DrizzleModule${connection} was registered without a "db" option. Pass the database instance returned by Drizzle's drizzle() function.`,
           );
         }
         return options.db;
@@ -98,6 +106,8 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
       providers: [
         ...optionsProviders,
         databaseProvider,
+        // Keeps the keys of separate registrations apart when Nest derives
+        // module keys from their metadata ("deep-hash").
         {
           provide: DRIZZLE_MODULE_ID,
           useValue: randomUUID(),
