@@ -4,7 +4,7 @@ jobs:
   build:
     working_directory: ~/nest
     docker:
-      - image: cimg/node:24.19.0
+      - image: cimg/node:24.20.0
     steps:
       - checkout
       - restore_cache:
@@ -19,11 +19,14 @@ jobs:
       - run:
           name: Build
           command: npm run build
+      - run:
+          name: Lint
+          command: npm run lint
 
   integration_tests:
     working_directory: ~/nest
     docker:
-      - image: cimg/node:24.19.0
+      - image: cimg/node:24.20.0
     steps:
       - checkout
       - restore_cache:
@@ -34,7 +37,9 @@ jobs:
       # The e2e suite runs against PGlite (in-process Postgres), so no database container is needed
       - run:
           name: e2e tests
-          command: npm run test:e2e
+          command: |
+            npx tsc -p tsconfig.json --noEmit
+            npm run test:e2e
       - run:
           name: e2e tests (drizzle-orm v1)
           command: |
