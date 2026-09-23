@@ -15,3 +15,4 @@ renovate.json
 .release-it.json
 tsconfig.build.json
 vitest.config.ts
+docker-compose.yml
