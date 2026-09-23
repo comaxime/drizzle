@@ -33,7 +33,7 @@ $ npm i --save @nestjs/drizzle drizzle-orm
 
 ## Quick Start
 
-[Overview & Tutorial](https://docs.nestjs.com/techniques/database#drizzle-integration)
+[Overview & Tutorial](https://docs.nestjs.com/data/drizzle)
 
 ## Support
 
