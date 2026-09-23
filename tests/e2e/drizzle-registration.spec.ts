@@ -99,6 +99,20 @@ describe('Drizzle - registration', () => {
     );
   });
 
+  it('should throw a descriptive error when the name is empty', async () => {
+    // A name left empty by a `?? ''` or a config default resolves to the
+    // token of the default connection, and both registrations would then
+    // overwrite one another without saying so.
+    @Module({
+      imports: [DrizzleModule.forRoot({ name: '', db: {} })],
+    })
+    class AppModule {}
+
+    await expect(
+      Test.createTestingModule({ imports: [AppModule] }).compile(),
+    ).rejects.toThrow('DrizzleModule received an empty "name"');
+  });
+
   it('should throw a descriptive error when "db" is missing', async () => {
     @Module({
       imports: [
