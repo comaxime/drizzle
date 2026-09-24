@@ -117,6 +117,14 @@ export class DrizzleCoreModule implements OnApplicationShutdown {
     options: DrizzleModuleOptions | undefined,
     name: string | undefined,
   ): unknown {
+    if (name !== undefined && name.trim() === '') {
+      // A name left empty by a `?? ''` or a config default would resolve to
+      // the token of the default connection, and the two registrations would
+      // overwrite one another without saying so.
+      throw new Error(
+        'DrizzleModule received an empty "name". Leave it out to register the default connection, or pass a name for this one.',
+      );
+    }
     const connection =
       name && name !== DEFAULT_CONNECTION_NAME ? ` ("${name}")` : '';
     const hasDatabase = options?.db !== undefined && options?.db !== null;
