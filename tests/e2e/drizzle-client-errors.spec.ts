@@ -85,6 +85,21 @@ describe('Drizzle - client errors', () => {
     expect(client.listenerCount('error')).toBe(1);
   });
 
+  it('should leave a client alone when the application already listens', async () => {
+    const error = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const onError = vi.fn();
+    const client = poolLikeClient();
+    client.on('error', onError);
+    await boot({ db: { $client: client } });
+
+    client.emit('error', new Error('connection reset'));
+    expect(client.listenerCount('error')).toBe(1);
+    expect(onError).toHaveBeenCalledOnce();
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it('should skip clients that are not event emitters', async () => {
     await expect(
       boot(
